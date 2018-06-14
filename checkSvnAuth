@@ -1,0 +1,14 @@
+#!/usr/bin/expect
+set user_file [open "/home/shopclues/bin/cred/users.txt"]
+set user [read $user_file]
+set secret_file [open "/home/shopclues/bin/cred/passwordKeys.txt"]
+set secret [read $secret_file]
+set featureType [lindex $argv 0]
+set branch [lindex $argv 1]
+
+spawn curl -s --head -w %{http_code} http://svn:8080/svn/${featureType}/branches/${branch}/ -u "${user}"
+expect "*password*"
+send "$secret\r"
+
+interact
+

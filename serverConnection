@@ -1,0 +1,20 @@
+#!/usr/bin/expect
+set user1 [lindex $argv 0]
+set pwd1 [lindex $argv 1]
+set user2 [lindex $argv 2]
+set pwd2 [lindex $argv 3]
+set ip [lindex $argv 4]
+set server [lindex $argv 5]
+set jump_folder [lindex $argv 6]
+
+spawn ssh ${user1}@${ip}
+expect "*password*"
+send -- "${pwd1}\r"
+expect "*${user1}@qa*"
+send -- "ssh ${user2}@${server}\r"
+expect "*password*"
+send -- "${pwd2}\r"
+expect "*${user2}@${server}*"
+send -- "cd /home/shopclue/${jump_folder}\r"
+interact
+ 

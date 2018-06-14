@@ -1,0 +1,46 @@
+#!/bin/bash
+function read_arg()
+{
+
+	IFS=' ' read -p "${@}" input
+
+	while [[ -z "$input" ]]
+	do
+	  IFS=' ' read -p "${@}" input
+	done
+
+	echo $input
+}
+
+dir_path="/home/shopclues/bin/cred/ddebug1.txt"
+IFS=' ' cred=($(cat "${dir_path}"))
+check=1
+folder=""
+
+while : 
+	if [[ -z $1 ]]; then
+		check=$(read_arg "choose ddebug1 branch : 1.admin 2.vendor 3.myaccount: ")
+	else
+		check=${1}
+	fi
+do
+	case $check in
+		1)
+			folder="admin"
+			break
+			;;
+		2)
+			folder="vendor"
+			break
+			;;
+		3)
+			folder="my_account"
+			break
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+serverConnection ${cred[0]} ${cred[1]} ${cred[2]} ${cred[3]} ${cred[4]} ${cred[5]} $folder 

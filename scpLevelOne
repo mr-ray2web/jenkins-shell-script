@@ -1,0 +1,10 @@
+#!/usr/bin/expect
+set user [lindex $argv 0]
+set password [lindex $argv 1]
+set ip [lindex $argv 2]
+set folder [lindex $argv 3]
+
+spawn scp /home/shopclues/Desktop/$folder ${user}@${ip}:/tmp/
+expect "*password*"
+send -- "${password}\r"
+interact

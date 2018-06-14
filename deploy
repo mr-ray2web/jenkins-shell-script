@@ -1,0 +1,223 @@
+#!/bin/bash
+
+function read_arg()
+{
+
+	IFS=' ' read -p "${@}" input
+
+	while [[ -z "$input" ]]
+	do
+	  IFS=' ' read -p "${@}" input
+	done
+
+	echo $input
+}
+
+function getServerName()
+{
+	server_branch=${@}
+	folder="transfer.zip"
+	dir_path=""
+	login_server=""
+
+	while :
+	do
+	  server=$(read_arg "Enter the server name where you want to deploy : 1.dfqa2 2.fqa2 3.fqa14 4.ddebug1 5.debug1 6.debug2 : ")
+	  case $server in
+		1)
+			dir_path="/home/shopclues/bin/cred/dfqa2.txt"
+			login_server="dfqa2"
+			break
+			;;
+		2)
+			dir_path="/home/shopclues/bin/cred/fqa2.txt"
+			login_server="fqa2"
+			break
+			;;
+		3)
+			dir_path="/home/shopclues/bin/cred/fqa14.txt"
+			login_server="fqa14"
+			break
+			;;
+		4)
+			dir_path="/home/shopclues/bin/cred/ddebug1.txt"
+			login_server="ddebug1"
+			break
+			;;
+		5)
+			dir_path="/home/shopclues/bin/cred/debug1.txt"
+			login_server="debug1"
+			break
+			;;
+		5)
+			dir_path="/home/shopclues/bin/cred/debug2.txt"
+			login_server="debug2"
+			break
+			;;
+		*)
+			echo "Invalid Selection !!"
+			;;
+	  esac
+	done
+
+	IFS=' ' cred=($(cat "${dir_path}"))
+	scpLevelOne ${cred[0]} ${cred[1]} ${cred[4]} $folder
+	scpLevelTwo ${cred[0]} ${cred[1]} ${cred[2]} ${cred[3]} ${cred[4]} ${cred[5]} $folder
+	$login_server $server_branch
+}
+
+function deploystart()
+{   
+	server_branch=1
+
+	case ${@} in
+		"admin")
+			server_branch=1
+			;;
+		"vendor")
+			server_branch=2
+			;;
+		"rest")
+			server_branch=3
+			;;
+		"my_account")
+			server_branch=4
+			;;
+		"mshopclues")
+			server_branch=5
+			;;
+		*)
+			server_branch=1
+			;;
+	esac
+
+	getServerName $server_branch
+}
+
+function getSummarize()
+{
+	read -r -a arr <<< ${@}
+	ticket=${arr[0]}
+	f_rev=${arr[1]}
+	s_rev=${arr[2]}
+	featureType=${arr[3]}
+
+	direct="/var/www/html/${ticket}/"
+
+	if [[ -d $direct ]]; then
+
+		echo "directory exist in your local"
+
+		cd /var/www/html/${ticket}
+
+		svnup=$(svn up)
+
+		rm -rf /home/shopclues/Desktop/transfer*
+		if [[ $featureType="admin" ]]; then
+			summary=$(svn diff -r${f_rev}:${s_rev} http://svn:8080/svn/${featureType}/branches/${ticket} --summarize | ack '^M' | cut -b 52- | cpio -pmdv /home/shopclues/Desktop/transfer &>/dev/null)
+		fi
+		
+		cd /home/shopclues/Desktop/transfer
+
+		tree ../transfer
+
+		zipped=$(zip -r  ../transfer.zip *)
+
+		deploystart $featureType
+		
+
+	else
+		echo "directory doesnot exist in your local"
+		exit
+		fill=$(svn diff -r$f_rev:$s_rev http://svn:8080/svn/${featureType}/branches/${ticket} --summarize | ack '^M' | cut -b 9-)
+
+		for i in "${fill[@]}";
+		do
+			wget transfer.zip $i
+		done
+	fi
+}
+function featureType()
+{
+	feature="admin"
+	while :
+	do 
+	  featureType=$(read_arg "Enter feature type: 1.admin 2.vendor 3.soa 4.myaccount 5.mobile : ")
+	  
+	  case $featureType in
+		1)
+			feature="admin"
+			break
+			;;
+		2)
+			feature="vendor"
+			break
+			;;
+		3)
+			feature="rest"
+			break
+			;;
+		4)
+			feature="my_account"
+			break
+			;;
+		5)
+			feature="mshopclues"
+			break
+			;;
+		*)
+			echo "Invalid Selection !!"
+			;;
+	  esac
+	done
+	echo $feature
+}
+
+function startMyscript()
+{
+	feature=$(featureType)
+
+	jiraTicketArg=$(read_arg "Enter svn branch name: ")
+
+	read -r -a jiraTicket <<< ${jiraTicketArg[@]}
+
+	if [[ ${#jiraTicket[@]} -ne 1 ]]; then
+		echo "Invalid svn branch name !!"
+		exit
+	fi
+
+	ticketExist=$(checkSvnAuth ${feature} ${jiraTicket[0]})
+    #echo ${ticketExist[@]};exit;
+	read -r -a status <<< ${ticketExist[@]}
+	
+	if [[ ${status[@]}=="*200*" ]]; then
+		echo "branch exist."
+	elif [[ ${status[@]}=="*400*" ]]; then
+		echo "branch doesnot exist."
+		exit
+	else
+		echo ${ticketExist[@]}
+		exit
+	fi
+
+	revisions=$(read_arg "Enter first and last revisions of your svn branch separated by SPACE: ")
+
+	read -r -a jiraRevisions <<< ${revisions[@]}
+
+	if [[ ${#jiraRevisions[@]} -ne 2 ]]; then
+		echo "Invalid revision numbers !!"
+		exit
+	fi
+
+	rev1=${jiraRevisions[0]}
+	rev2=${jiraRevisions[1]}
+
+	getSummarize $jiraTicketArg $rev1 $rev2 ${feature}
+}
+
+#starting 
+startMyscript
+
+
+
+
